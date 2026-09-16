@@ -1,0 +1,485 @@
+INSURANCE ETL PIPELINE
+
+Project Description
+
+The Insurance ETL Pipeline is an end-to-end data engineering project that processes insurance policy, claims, premium, and risk data.
+
+The project uses Python, Apache Kafka, PySpark, MySQL or Amazon RDS, Amazon S3, AWS Lambda, and AWS Step Functions.
+
+The pipeline performs data ingestion, transformation, validation, calculation, aggregation, and storage.
+
+
+TECHNOLOGIES USED
+
+1. Python
+2. Apache Kafka
+3. PySpark
+4. Hadoop
+5. MySQL
+6. Amazon RDS
+7. Amazon S3
+8. AWS Lambda
+9. AWS Step Functions
+10. Git and GitHub
+11. python-dotenv
+12. mysql-connector-python
+13. boto3
+
+
+PROJECT STRUCTURE
+
+kafka/
+    producer.py
+    consumer.py
+    claims_producer.py
+    claims_consumer.py
+
+databricks/
+    insurance_etl.py
+    claims_etl.py
+    risk_etl.py
+
+data/
+    create_claims_data.py
+    train.csv
+
+database_loader.py
+requirements.txt
+doc.txt
+README.md
+
+
+DATASET DETAILS
+
+The policy dataset contains the following columns:
+
+id
+Gender
+Age
+Driving_License
+Region_Code
+Previously_Insured
+Vehicle_Age
+Vehicle_Damage
+Annual_Premium
+Policy_Sales_Channel
+Vintage
+Response
+
+The Response column is not used in the premium and risk calculations.
+
+
+STEP 1: CREATE THE PROJECT DIRECTORY
+
+Command:
+
+cd "/home/rgukt/Bridgelabz/projects/Insurance ETL Pipeline"
+
+
+STEP 2: CREATE A PYTHON VIRTUAL ENVIRONMENT
+
+Command:
+
+python3 -m venv venv
+
+Activate the environment:
+
+source venv/bin/activate
+
+
+STEP 3: INSTALL PYTHON REQUIREMENTS
+
+Command:
+
+pip install -r requirements.txt
+
+The main Python libraries used are:
+
+pandas
+python-dotenv
+mysql-connector-python
+kafka-python
+pyspark
+boto3
+requests
+
+
+STEP 4: CONFIGURE ENVIRONMENT VARIABLES
+
+Create a .env file:
+
+nano .env
+
+Example local MySQL configuration:
+
+MYSQL_HOST=localhost
+MYSQL_USER=root
+MYSQL_PASSWORD=your_password
+MYSQL_DATABASE=insurance_db
+
+For Amazon RDS, update the values:
+
+MYSQL_HOST=your-rds-endpoint
+MYSQL_USER=insurance_admin
+MYSQL_PASSWORD=your_rds_password
+MYSQL_DATABASE=insurance_db
+
+The .env file must not be pushed to GitHub because it contains database credentials.
+
+
+STEP 5: START HADOOP SERVICES
+
+Start Hadoop services if Hadoop is configured locally.
+
+Commands:
+
+start-dfs.sh
+start-yarn.sh
+
+Check running services:
+
+jps
+
+Expected services may include:
+
+NameNode
+DataNode
+SecondaryNameNode
+ResourceManager
+NodeManager
+
+Check HDFS:
+
+hdfs dfs -ls /
+
+
+STEP 6: START KAFKA
+
+Start Kafka according to the local Kafka installation.
+
+For a KRaft-based Kafka installation, use the configured Kafka server properties file.
+
+Example:
+
+bin/kafka-server-start.sh config/kraft/server.properties
+
+Create a Kafka topic:
+
+bin/kafka-topics.sh \
+--create \
+--topic insurance-policy \
+--bootstrap-server localhost:9092 \
+--partitions 1 \
+--replication-factor 1
+
+List Kafka topics:
+
+bin/kafka-topics.sh \
+--list \
+--bootstrap-server localhost:9092
+
+
+STEP 7: PRODUCE POLICY DATA TO KAFKA
+
+Run the policy producer:
+
+python3 kafka/producer.py
+
+The producer reads policy records and sends them to the Kafka topic.
+
+
+STEP 8: CONSUME POLICY DATA FROM KAFKA
+
+Run the consumer:
+
+python3 kafka/consumer.py
+
+The consumer reads messages from Kafka and stores the consumed policy data in the raw data area.
+
+
+STEP 9: PREMIUM ETL PROCESSING
+
+Run the premium ETL script:
+
+python3 databricks/insurance_etl.py
+
+Premium calculation rules:
+
+1. Base Premium is equal to Annual_Premium.
+
+2. If Age is greater than 60, add 15 percent to the premium.
+
+3. If Vehicle_Age is greater than 2 years, add 10 percent to the premium.
+
+4. If Vehicle_Damage is Yes, add 8 percent to the premium.
+
+5. If Previously_Insured is 0, add 5 percent to the premium.
+
+Final Premium Formula:
+
+Final_Premium = Base_Premium + Applicable Premium Increases
+
+Premium status rule:
+
+If Final_Premium is greater than 60000, Premium_Status is High.
+
+Otherwise, Premium_Status is Normal.
+
+Premium output columns:
+
+id
+Base_Premium
+Final_Premium
+Premium_Status
+
+
+STEP 10: CREATE CLAIMS DATA
+
+Run the claims data creation script if sample city-wise claims data is required:
+
+python3 data/create_claims_data.py
+
+Claims data may be created for the following cities:
+
+Bangalore
+Chennai
+Hyderabad
+Mumbai
+
+
+STEP 11: PRODUCE CLAIMS DATA TO KAFKA
+
+Run:
+
+python3 kafka/claims_producer.py
+
+The claims producer sends claims records to the Kafka topic.
+
+
+STEP 12: CONSUME CLAIMS DATA FROM KAFKA
+
+Run:
+
+python3 kafka/claims_consumer.py
+
+The claims consumer reads claims messages and stores them for further processing.
+
+
+STEP 13: CLAIMS ETL PROCESSING
+
+Run:
+
+python3 databricks/claims_etl.py
+
+Claims processing steps:
+
+1. Merge claims files from different cities.
+2. Remove duplicate records.
+3. Validate customer IDs against policy IDs.
+4. Remove claims belonging to invalid customer IDs.
+5. Aggregate the total claim amount for each customer.
+
+Claims output columns:
+
+customer_id
+Total_Claim_Amount
+
+
+STEP 14: RISK ETL PROCESSING
+
+Run:
+
+python3 databricks/risk_etl.py
+
+Risk score calculation rules:
+
+1. If Age is greater than 60, add 30 points.
+
+2. If Vehicle_Age is greater than 2 years, add 20 points.
+
+3. If Vehicle_Damage is Yes, add 25 points.
+
+4. If Previously_Insured is 0, add 15 points.
+
+5. If Annual_Premium is greater than 50000, add 10 points.
+
+Risk level rules:
+
+Risk score from 0 to 30: Low
+
+Risk score from 31 to 60: Medium
+
+Risk score greater than 60: High
+
+Risk output columns:
+
+id
+Risk_Score
+Risk_Level
+
+
+STEP 15: LOAD DATA INTO MYSQL OR AMAZON RDS
+
+Create the database:
+
+CREATE DATABASE insurance_db;
+
+Use the database:
+
+USE insurance_db;
+
+Create the premium table:
+
+CREATE TABLE premium (
+    id INT PRIMARY KEY,
+    Base_Premium DECIMAL(12,2),
+    Final_Premium DECIMAL(12,2),
+    Premium_Status VARCHAR(20)
+);
+
+Create the claims table:
+
+CREATE TABLE claims (
+    customer_id INT PRIMARY KEY,
+    Total_Claim_Amount DECIMAL(12,2)
+);
+
+Create the risk table:
+
+CREATE TABLE risk (
+    id INT PRIMARY KEY,
+    Risk_Score INT,
+    Risk_Level VARCHAR(20)
+);
+
+Update the .env file with the local MySQL or Amazon RDS connection details.
+
+Run the database loader:
+
+python3 database_loader.py
+
+The loader inserts the processed premium, claims, and risk records into the database tables.
+
+
+STEP 16: AMAZON S3 STORAGE
+
+Amazon S3 can be used to store raw, processed, and archived data.
+
+Suggested S3 structure:
+
+s3://insurance-etl-bucket/raw/
+
+s3://insurance-etl-bucket/processed/
+
+s3://insurance-etl-bucket/archive/
+
+Raw data is stored in the raw folder.
+
+Processed ETL results are stored in the processed folder.
+
+Old or completed files are stored in the archive folder.
+
+
+STEP 17: AWS LAMBDA
+
+AWS Lambda can be used for serverless processing.
+
+Possible Lambda responsibilities:
+
+1. Validate uploaded files.
+2. Trigger ETL processing.
+3. Move files from raw to processed.
+4. Archive completed files.
+5. Update processing status.
+6. Send notifications after completion.
+
+The Lambda function used during the project is:
+
+student-data-processor
+
+
+STEP 18: AWS STEP FUNCTIONS
+
+AWS Step Functions can orchestrate the ETL workflow.
+
+Possible workflow:
+
+1. Validate input file.
+2. Start processing.
+3. Process premium data.
+4. Process claims data.
+5. Calculate risk.
+6. Store results.
+7. Archive input data.
+8. Send completion notification.
+
+Step Functions coordinates the execution of multiple Lambda functions in a defined order.
+
+
+STEP 19: GIT COMMANDS
+
+Check project status:
+
+git status
+
+Initialize Git:
+
+git init
+
+Create a .gitignore file and exclude:
+
+.env
+insurance-data/
+output/
+__pycache__/
+*.csv
+
+Add files:
+
+git add .
+
+Commit files:
+
+git commit -m "Add insurance ETL pipeline project"
+
+Add GitHub remote:
+
+git remote add origin https://github.com/your-username/Insurance-ETL-Pipeline.git
+
+Rename branch:
+
+git branch -M main
+
+Push project:
+
+git push -u origin main
+
+
+IMPORTANT SECURITY NOTES
+
+1. Never push the .env file.
+2. Never expose MySQL or RDS passwords.
+3. Never push AWS access keys or secret keys.
+4. Use IAM roles wherever possible.
+5. Add generated datasets and output files to .gitignore.
+6. If a password is accidentally pushed, change it immediately.
+
+
+PROJECT OUTPUTS
+
+Premium output:
+
+id, Base_Premium, Final_Premium, Premium_Status
+
+Claims output:
+
+customer_id, Total_Claim_Amount
+
+Risk output:
+
+id, Risk_Score, Risk_Level
+
+
+CONCLUSION
+
+This project demonstrates an end-to-end insurance data pipeline using streaming, batch processing, ETL transformations, cloud storage, serverless services, workflow orchestration, and database loading.

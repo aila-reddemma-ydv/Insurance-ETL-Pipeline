@@ -1,0 +1,7 @@
+pandas
+python-dotenv
+mysql-connector-python
+kafka-python
+pyspark
+boto3
+requests
